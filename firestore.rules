@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "rafnha.usa2025@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'name', 'color', 'lastSeen']) &&
+             data.uid is string && data.uid.size() > 0 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 50 &&
+             data.color is string && data.color.size() > 0 &&
+             data.lastSeen is string;
+    }
+
+    function isValidRoom(data) {
+      return data.keys().hasAll(['name', 'createdBy', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 50 &&
+             data.createdBy is string &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['text', 'senderId', 'senderName', 'senderColor', 'roomId', 'timestamp']) &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 2000 &&
+             data.senderId is string && data.senderId.size() > 0 &&
+             data.senderName is string &&
+             data.senderColor is string &&
+             data.roomId is string && data.roomId.size() > 0 &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(uid) && isValidUser(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /rooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidRoom(request.resource.data);
+      allow update: if (isAuthenticated() && isValidRoom(request.resource.data)) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /messages/{messageId} {
+      // For private messages, only sender and recipient can read
+      allow read: if isAuthenticated() && (
+        !('to' in resource.data) || 
+        resource.data.senderId == request.auth.uid || 
+        resource.data.to == request.auth.uid
+      );
+      
+      allow create: if isAuthenticated() && isValidMessage(request.resource.data) && (
+        request.resource.data.senderId == request.auth.uid
+      );
+      
+      allow update, delete: if isAdmin();
+    }
+  }
+}

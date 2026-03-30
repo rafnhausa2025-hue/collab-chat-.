@@ -1,0 +1,5 @@
+{
+  "name": "CollabChat",
+  "description": "A real-time collaborative chat application with private messaging, video/voice calls, and dynamic room creation.",
+  "requestFramePermissions": ["camera", "microphone"]
+}

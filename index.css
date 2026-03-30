@@ -1,0 +1,41 @@
+import { Buffer } from 'buffer';
+import process from 'process';
+import { EventEmitter } from 'events';
+
+// Polyfills for simple-peer
+const globalObj = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
+if (typeof (globalObj as any).global === 'undefined') {
+  (globalObj as any).global = globalObj;
+}
+if (typeof (globalObj as any).process === 'undefined') {
+  (globalObj as any).process = process;
+}
+if (typeof (globalObj as any).Buffer === 'undefined') {
+  (globalObj as any).Buffer = Buffer;
+}
+if (typeof (globalObj as any).EventEmitter === 'undefined') {
+  (globalObj as any).EventEmitter = EventEmitter;
+}
+
+// Ensure process.env is defined
+if (!(globalObj as any).process.env) {
+  (globalObj as any).process.env = { NODE_ENV: 'development' };
+}
+
+// Ensure nextTick is available
+if (!(globalObj as any).process.nextTick) {
+  (globalObj as any).process.nextTick = function(fn: any, ...args: any[]) { 
+    setTimeout(() => fn.apply(null, args), 0); 
+  };
+}
+
+import {StrictMode} from 'react';
+import {createRoot} from 'react-dom/client';
+import App from './App.tsx';
+import './index.css';
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
